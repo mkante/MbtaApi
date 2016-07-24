@@ -62,9 +62,6 @@ task ("run", type: JavaExec) {
     main = "com.mbta.App"
 }
 
-/*
- * gradle importCsv -s -Ddb.url=jdbc:mysql://lab-101.vbx/mbta_test -Ddb.driver=com.mysql.jdbc.Driver -Ddb.user=test -Ddb.password=test
- */
 task "importCsv" << {
 
     File file = file('src/main/resources/departures.csv');
