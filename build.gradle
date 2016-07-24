@@ -1,0 +1,127 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'org.apache.commons:commons-csv:1.2'
+        classpath 'org.springframework.boot:spring-boot-gradle-plugin:1.3.6.RELEASE'
+    }
+}
+
+
+apply plugin: 'java'
+apply plugin: 'spring-boot'
+
+
+import org.apache.commons.csv.CSVParser;
+import java.nio.file.Paths
+import java.sql.DriverManager;
+
+import static org.apache.commons.csv.CSVFormat.DEFAULT;
+import groovy.sql.Sql;
+
+
+sourceCompatibility = 1.8
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+test {
+    minHeapSize = "128m"
+    useJUnit();
+    testLogging.showStackTraces = true
+    testLogging.showStandardStreams = true
+    testLogging.showCauses = true
+    testLogging.showExceptions = true
+    outputs.upToDateWhen { false }
+}
+
+dependencies {
+    runtime 'mysql:mysql-connector-java:6.0.3'
+
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.21'
+    compile 'ch.qos.logback:logback-core:1.1.7'
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.1.7'
+    compile 'mysql:mysql-connector-java:6.0.3'
+    compile("org.springframework.boot:spring-boot-starter-web:1.3.6.RELEASE")
+    compile group: 'commons-dbcp', name: 'commons-dbcp', version: '1.4'
+    compile group: 'joda-time', name: 'joda-time', version: '2.9.4'
+    compile group: 'org.springframework', name: 'spring-jdbc', version: '4.3.1.RELEASE'
+
+    testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test', version: '1.3.6.RELEASE'
+
+
+}
+
+
+task ("run", type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = "com.mbta.App"
+}
+
+/*
+ * gradle importCsv -s -Ddb.url=jdbc:mysql://lab-101.vbx/mbta_test -Ddb.driver=com.mysql.jdbc.Driver -Ddb.user=test -Ddb.password=test
+ */
+task "importCsv" << {
+
+    File file = file('src/main/resources/departures.csv');
+    logger.quiet 'Importing CSV file: ' + file ;
+
+    Map dbCreds = [
+            driver: System.getProperty('db.driver'),
+            url: System.getProperty('db.url'),
+            user: System.getProperty('db.user'),
+            password: System.getProperty('db.password'),
+    ];
+
+
+    logger.quiet "Database creds: " + dbCreds;
+    logger.quiet "Creating database connection"
+    Sql sql = Sql.newInstance(dbCreds);
+
+    if ( !file.isFile() ) {
+        logger.quiet "Can't find file: " ;
+    }
+
+    Paths.get (file.absolutePath).withReader { reader ->
+
+        CSVParser csv = new CSVParser(reader, DEFAULT.withHeader())
+
+        csv.each { record ->
+
+            String stopId = "place-sstat";
+            String stationName = record.Origin.toString().trim().toLowerCase();
+            if ( stationName =~ /^north/ ) {
+                stopId = "place-north" ;
+            }
+
+            def stmnt = """
+            INSERT INTO departures SET
+            time = FROM_UNIXTIME(${record.TimeStamp}) ,
+            trip = ${record.Trip} ,
+            origin_stop_id = ${stopId} ,
+            origin_stop_name = ${record.Origin} ,
+            destination = ${record.Destination} ,
+            arrival_time = FROM_UNIXTIME(${record.ScheduledTime}) ,
+            lateness = ${record.Lateness} ,
+            track = ${record.Track} ,
+            status = ${record.Status}
+            """
+            logger.debug stmnt;
+            sql.execute( stmnt)
+        }
+
+        logger.quiet "Complete"
+    }
+
+
+}
+
+task "showClasspath" << {
+    sourceSets.main.runtimeClasspath.each { file ->
+        println file.name
+    }
+}
