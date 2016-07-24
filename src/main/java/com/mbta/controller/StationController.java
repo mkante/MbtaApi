@@ -109,8 +109,8 @@ public class StationController
 
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     @ExceptionHandler(Exception.class)
-    protected Object handleError() {
-
+    protected Object handleError(Exception e) {
+        log.error(e.getMessage(), e);
         return new ErrorView();
     }
 }
