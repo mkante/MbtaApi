@@ -86,6 +86,7 @@ task "importCsv" << {
 
     if ( !file.isFile() ) {
         logger.quiet "Can't find file: " ;
+        return;
     }
 
     Paths.get (file.absolutePath).withReader { reader ->
