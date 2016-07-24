@@ -48,6 +48,7 @@ public class Context {
         ds.setPassword(dbPassword);
         ds.setMinIdle(1);
         ds.setMaxIdle(4);
+        ds.setMaxWait(5000);
         ds.setMaxOpenPreparedStatements(20);
 
         return ds;
