@@ -64,6 +64,11 @@ task ("run", type: JavaExec) {
 
 task "importCsv" << {
 
+    URLClassLoader loader = GroovyObject.class.classLoader
+    configurations.runtime.each { File file ->
+        loader.addURL(file.toURI().toURL())
+    }
+
     File file = file('src/main/resources/departures.csv');
     logger.quiet 'Importing CSV file: ' + file ;
 
